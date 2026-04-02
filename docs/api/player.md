@@ -1,306 +1,210 @@
+---
+sidebar_position: 3
+---
+
 # PlayerAPI
 
-**PlayerAPI** provides convenient methods for working with players: searching, getting information, and managing state.
+PlayerAPI works with client-side players via `ProtoActor` — Unity MonoBehaviour objects you can interact with directly. This is different from ActorAPI which works with server-side player representations inside rooms.
 
-## Player Retrieval Methods
+## Getting players
 
 ### GetLocalPlayer()
-
-Gets the local player (player on the current client).
 
 ```csharp
 public static ProtoActor? GetLocalPlayer()
 ```
 
-**Returns:** `ProtoActor?` - Local player or `null`
+Returns the player on this client. The most common starting point for player logic.
 
-**Example:**
 ```csharp
 var player = PlayerAPI.GetLocalPlayer();
-if (player != null)
-{
-    MelonLogger.Msg($"Local player: {player.gameObject.name}");
-}
+if (player == null) return;
+
+MelonLogger.Msg($"Playing as: {PlayerAPI.GetPlayerName(player)}");
+MelonLogger.Msg($"Position: {PlayerAPI.GetPlayerPosition(player)}");
 ```
 
 ### GetAllPlayers()
-
-Gets all players in the game.
 
 ```csharp
 public static ProtoActor[]? GetAllPlayers()
 ```
 
-**Returns:** `ProtoActor[]?` - Array of all players
+Every `ProtoActor` in the scene, including dead players.
 
 ### GetOtherPlayers()
-
-Gets all players except the local player.
 
 ```csharp
 public static ProtoActor[]? GetOtherPlayers()
 ```
 
-### GetPlayerByName()
+All players except the local player.
 
-Search for a player by name (case-insensitive).
+### GetPlayerByName()
 
 ```csharp
 public static ProtoActor? GetPlayerByName(string name)
 ```
 
-### GetPlayerByID()
+Case-insensitive name search.
 
-Gets a player by Actor ID.
+### GetPlayerByID()
 
 ```csharp
 public static ProtoActor? GetPlayerByID(uint actorID)
 ```
 
-## State Check Methods
-
-### IsPlayerValid()
-
-Checks if a player is valid (not null and active).
-
-```csharp
-public static bool IsPlayerValid(ProtoActor? actor)
-```
+## Checking state
 
 ### HasLocalPlayer()
-
-Checks if the local player exists.
 
 ```csharp
 public static bool HasLocalPlayer()
 ```
 
-### IsPlayerAlive()
+Quick null-check before doing anything player-related.
 
-Checks if a player is alive.
+### IsPlayerAlive() / IsLocalPlayerAlive()
 
 ```csharp
 public static bool IsPlayerAlive(ProtoActor? actor)
-```
-
-### IsLocalPlayerAlive()
-
-Checks if the local player is alive.
-
-```csharp
 public static bool IsLocalPlayerAlive()
 ```
 
-## Component Methods
-
-### GetStatManager()
-
-Gets the StatManager for a player.
+Calls `IsAliveStatus()` on the player's `StatManager`.
 
 ```csharp
-public static StatManager? GetStatManager(ProtoActor? actor)
-public static StatManager? GetLocalStatManager()
+if (!PlayerAPI.IsLocalPlayerAlive())
+{
+    MelonLogger.Msg("You are dead");
+    return;
+}
 ```
 
-### GetMovementController()
-
-Gets the player's movement controller.
+### IsPlayerValid()
 
 ```csharp
-public static MovementController? GetMovementController(ProtoActor? actor)
-public static MovementController? GetLocalMovementController()
+public static bool IsPlayerValid(ProtoActor? actor)
 ```
 
-### GetInventory()
+Returns `true` if the actor is not null and its GameObject is active in the scene.
 
-Gets the player's inventory.
+## Position
 
-```csharp
-public static object? GetInventory(ProtoActor? actor)
-public static object? GetLocalInventory()
-```
-
-### GetInventoryItems()
-
-Gets the list of items in the player's inventory.
-
-```csharp
-public static List<InventoryItem> GetInventoryItems(ProtoActor? actor)
-```
-
-## Position Methods
-
-### GetPlayerPosition()
-
-Gets a player's position.
+### GetPlayerPosition() / GetLocalPlayerPosition()
 
 ```csharp
 public static Vector3 GetPlayerPosition(ProtoActor? actor)
 public static Vector3 GetLocalPlayerPosition()
 ```
 
-### GetDistanceBetweenPlayers()
+Returns `Vector3.zero` if the actor is null.
 
-Calculates the distance between two players.
+### GetDistanceBetweenPlayers()
 
 ```csharp
 public static float GetDistanceBetweenPlayers(ProtoActor? actor1, ProtoActor? actor2)
 ```
 
-## Range Search Methods
+## Finding nearby players
 
 ### GetPlayersInRange()
-
-Gets all players within a specified radius.
 
 ```csharp
 public static List<ProtoActor> GetPlayersInRange(float range, Vector3? center = null)
 ```
 
-**Example:**
+`center` defaults to the local player position if not provided.
+
 ```csharp
-// Find all players within 10 meters
-var nearbyPlayers = PlayerAPI.GetPlayersInRange(10f);
-MelonLogger.Msg($"Players nearby: {nearbyPlayers.Count}");
+var nearby = PlayerAPI.GetPlayersInRange(20f);
+MelonLogger.Msg($"{nearby.Count} players within 20m");
 ```
 
 ### GetAlivePlayersInRange()
-
-Gets all alive players within a specified radius.
 
 ```csharp
 public static List<ProtoActor> GetAlivePlayersInRange(float range, Vector3? center = null)
 ```
 
-### GetNearestPlayer()
-
-Finds the nearest player.
+### GetNearestPlayer() / GetNearestAlivePlayer()
 
 ```csharp
 public static ProtoActor? GetNearestPlayer(Vector3? center = null)
-```
-
-### GetNearestAlivePlayer()
-
-Finds the nearest alive player.
-
-```csharp
 public static ProtoActor? GetNearestAlivePlayer(Vector3? center = null)
 ```
 
-## Additional Methods
+```csharp
+var nearest = PlayerAPI.GetNearestAlivePlayer();
+if (nearest != null)
+{
+    float dist = PlayerAPI.GetDistanceBetweenPlayers(PlayerAPI.GetLocalPlayer(), nearest);
+    MelonLogger.Msg($"{PlayerAPI.GetPlayerName(nearest)} is {dist:F1}m away");
+}
+```
+
+## Components
+
+### GetStatManager() / GetLocalStatManager()
+
+```csharp
+public static StatManager? GetStatManager(ProtoActor? actor)
+public static StatManager? GetLocalStatManager()
+```
+
+### GetMovementController() / GetLocalMovementController()
+
+```csharp
+public static MovementController? GetMovementController(ProtoActor? actor)
+public static MovementController? GetLocalMovementController()
+```
+
+### GetInventory() / GetLocalInventory()
+
+```csharp
+public static object? GetInventory(ProtoActor? actor)
+public static object? GetLocalInventory()
+```
+
+Returns the inventory as `object`. Use `ReflectionHelper` to read fields on it.
+
+### GetInventoryItems()
+
+```csharp
+public static List<InventoryItem> GetInventoryItems(ProtoActor? actor)
+```
 
 ### GetPlayerName()
-
-Gets a player's name.
 
 ```csharp
 public static string GetPlayerName(ProtoActor? actor)
 ```
 
-## Practical Examples
+Returns the player GameObject name, or `"Unknown"` if null.
 
-### Display Information About All Players
+## Full example
 
 ```csharp
-void DisplayAllPlayersInfo()
+public override void OnUpdate()
 {
+    if (!Input.GetKeyDown(KeyCode.F1)) return;
+
     var players = PlayerAPI.GetAllPlayers();
     if (players == null) return;
 
-    MelonLogger.Msg($"=== Total Players: {players.Length} ===");
-    
-    foreach (var player in players)
+    foreach (var p in players)
     {
-        string name = PlayerAPI.GetPlayerName(player);
-        Vector3 pos = PlayerAPI.GetPlayerPosition(player);
-        bool isAlive = PlayerAPI.IsPlayerAlive(player);
-        bool isLocal = player.AmIAvatar();
-        
-        MelonLogger.Msg($"{name} - Position: {pos}, Alive: {isAlive}, Local: {isLocal}");
+        string name = PlayerAPI.GetPlayerName(p);
+        Vector3 pos  = PlayerAPI.GetPlayerPosition(p);
+        bool alive   = PlayerAPI.IsPlayerAlive(p);
+        bool local   = p.AmIAvatar();
+
+        MelonLogger.Msg($"{(local ? "[YOU] " : "")}{name} — {pos} — {(alive ? "alive" : "dead")}");
     }
 }
 ```
 
-### Find Nearest Enemy
+## See also
 
-```csharp
-ProtoActor? FindNearestEnemy()
-{
-    var localPlayer = PlayerAPI.GetLocalPlayer();
-    if (localPlayer == null) return null;
-
-    var otherPlayers = PlayerAPI.GetOtherPlayers();
-    if (otherPlayers == null || otherPlayers.Length == 0) return null;
-
-    ProtoActor? nearest = null;
-    float minDistance = float.MaxValue;
-
-    foreach (var player in otherPlayers)
-    {
-        if (!PlayerAPI.IsPlayerAlive(player)) continue;
-
-        float distance = PlayerAPI.GetDistanceBetweenPlayers(localPlayer, player);
-        if (distance < minDistance)
-        {
-            minDistance = distance;
-            nearest = player;
-        }
-    }
-
-    return nearest;
-}
-```
-
-### Nearby Players Notification System
-
-```csharp
-float checkRadius = 15f;
-float checkInterval = 2f;
-float lastCheckTime = 0f;
-
-public override void OnUpdate()
-{
-    if (Time.time - lastCheckTime < checkInterval) return;
-    lastCheckTime = Time.time;
-
-    var nearbyPlayers = PlayerAPI.GetAlivePlayersInRange(checkRadius);
-    
-    // Exclude local player
-    nearbyPlayers.RemoveAll(p => p.AmIAvatar());
-    
-    if (nearbyPlayers.Count > 0)
-    {
-        MelonLogger.Warning($"ATTENTION! {nearbyPlayers.Count} players nearby!");
-        foreach (var player in nearbyPlayers)
-        {
-            string name = PlayerAPI.GetPlayerName(player);
-            float distance = Vector3.Distance(
-                PlayerAPI.GetLocalPlayerPosition(),
-                PlayerAPI.GetPlayerPosition(player)
-            );
-            MelonLogger.Msg($"- {name} at {distance:F1}m");
-        }
-    }
-}
-```
-
-## Notes
-
-:::warning Important
-- Many methods return `null`. Always check the result.
-- `GetAllPlayers()` returns all actors, including possibly dead players.
-- Use `IsPlayerAlive()` to check life status.
-:::
-
-:::tip Tips
-- Use `HasLocalPlayer()` before calling other methods for safety
-- Cache frequently used values for performance
-- Range search methods can be expensive, use them wisely
-:::
-
-## See Also
-
-- [ActorAPI](./actor.md) - Working with actors in rooms
-- [RoomAPI](./room.md) - Room management
-- [LootAPI](./loot.md) - Loot search
+- [ActorAPI](./actor.md) — server-side player representations inside rooms
+- [RoomAPI](./room.md) — the room the player is in

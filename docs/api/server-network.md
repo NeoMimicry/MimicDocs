@@ -1,313 +1,193 @@
+---
+sidebar_position: 7
+---
+
 # ServerNetworkAPI
 
-**ServerNetworkAPI** provides access to server networking functions, connection management, and server component information.
+ServerNetworkAPI exposes the game's server networking layer — sessions, connections, and the two transport servers (`RUDPServer` for UDP, `SDRServer` for Steam relay). Most of this is only meaningful on the host.
 
-:::warning Warning
-This API is intended for server-side logic and may only work on the game host. Using some methods on clients may result in errors.
-:::
+## How the server is structured
 
-## ServerSocket Methods
-
-### GetServerSocket()
-
-Gets the server socket instance.
-
-```csharp
-public static object? GetServerSocket()
+```
+VWorld
+ ├── _rudpServer      →  RUDPServer   (UDP / LiteNetLib)
+ ├── _sdrServer       →  SDRServer    (Steam relay)
+ └── _sessionManager  →  SessionManager
+      └── m_Contexts  →  Dictionary<long, SessionContext>  (connected players)
 ```
 
-**Example:**
-```csharp
-var serverSocket = ServerNetworkAPI.GetServerSocket();
-if (serverSocket != null)
-{
-    MelonLogger.Msg("Server is active");
-}
-```
+## Server state
 
 ### IsServerRunning()
-
-Checks if the server is running.
 
 ```csharp
 public static bool IsServerRunning()
 ```
 
-**Example:**
+Returns `true` if `VWorld` is available. Use this before calling anything else.
+
 ```csharp
-if (ServerNetworkAPI.IsServerRunning())
+if (!ServerNetworkAPI.IsServerRunning())
 {
-    MelonLogger.Msg("Server is running");
-}
-else
-{
-    MelonLogger.Warning("Server is not running");
+    MelonLogger.Msg("Not hosting");
+    return;
 }
 ```
 
-## Connection Management Methods
+### GetServerSocket()
+
+```csharp
+public static object? GetServerSocket()
+```
+
+Returns the `SDRServer` if available, otherwise the `RUDPServer`. Useful when you need to pass a socket to `SetMaximumClients`.
+
+### GetRudpServer() / GetSdrServer()
+
+```csharp
+public static object? GetRudpServer()
+public static object? GetSdrServer()
+```
+
+Access the individual transport servers directly.
+
+## Sessions and clients
+
+### GetSessionCount() / GetCurrentClientCount()
+
+```csharp
+public static int GetSessionCount()
+public static int GetCurrentClientCount()
+```
+
+Number of active sessions from `SessionManager.m_Contexts`. Both methods return the same value.
 
 ### GetMaximumClients()
-
-Gets the maximum number of clients.
 
 ```csharp
 public static int GetMaximumClients()
 ```
 
-### SetMaximumClients()
+Calls `VRoomManager.GetPlayerCountInSession()`.
 
-Sets the maximum number of clients.
+### SetMaximumClients()
 
 ```csharp
 public static void SetMaximumClients(object serverSocket, int value)
 ```
 
-**Example:**
-```csharp
-var serverSocket = ServerNetworkAPI.GetServerSocket();
-if (serverSocket != null)
-{
-    ServerNetworkAPI.SetMaximumClients(serverSocket, 16);
-    MelonLogger.Msg("Client limit increased to 16");
-}
-```
-
-:::danger Caution
-Changing the client limit can seriously affect server performance and game balance. Use with caution.
-:::
-
-### GetCurrentClientCount()
-
-Gets the current number of connected clients.
+Sets `_maximumClients` on the socket object.
 
 ```csharp
-public static int GetCurrentClientCount()
+var socket = ServerNetworkAPI.GetServerSocket();
+if (socket != null)
+    ServerNetworkAPI.SetMaximumClients(socket, 16);
 ```
 
 ### GetAllConnectedPlayers()
-
-Gets a list of all connected players.
 
 ```csharp
 public static List<object> GetAllConnectedPlayers()
 ```
 
-## Waiting Room Methods
+Returns all `SessionContext` objects from `SessionManager.m_Contexts`.
 
-### GetWaitingRoom()
+## Room helpers
 
-Gets the waiting room.
+These filter `RoomAPI.GetAllRooms()` by type name — no separate room lookup needed.
+
+### GetWaitingRoom() / GetMaintenanceRoom()
 
 ```csharp
 public static object? GetWaitingRoom()
+public static object? GetMaintenanceRoom()
 ```
 
-### GetWaitingRoomMemberCount()
-
-Gets the number of players in the waiting room.
+### GetWaitingRoomMemberCount() / GetMaintenanceRoomMemberCount()
 
 ```csharp
 public static int GetWaitingRoomMemberCount()
+public static int GetMaintenanceRoomMemberCount()
 ```
 
-### GetWaitingRoomMaxPlayers()
-
-Gets the maximum number of players in the waiting room.
+### GetWaitingRoomMaxPlayers() / GetMaintenanceRoomMaxPlayers()
 
 ```csharp
 public static int GetWaitingRoomMaxPlayers()
+public static int GetMaintenanceRoomMaxPlayers()
 ```
 
 ### CanPlayerEnterWaitingRoom()
-
-Checks if a player can enter the waiting room.
 
 ```csharp
 public static bool CanPlayerEnterWaitingRoom(long playerUID)
 ```
 
-## Maintenance Room Methods
+Calls `CanEnterChannel(playerUID)` on the waiting room and checks for `MsgErrorCode.Success`.
 
-### GetMaintenanceRoom()
-
-Gets the maintenance room.
+### IsPlayerInRoom()
 
 ```csharp
-public static object? GetMaintenanceRoom()
+public static bool IsPlayerInRoom(object room, long playerUID)
 ```
 
-### GetMaintenanceRoomMemberCount()
+Scans `_vPlayerDict` for a matching `UID`.
 
-Gets the number of players in the maintenance room.
+## Room player helpers
+
+### GetRoomPlayerCount()
 
 ```csharp
-public static int GetMaintenanceRoomMemberCount()
+public static int GetRoomPlayerCount(object? room)
 ```
 
-### GetMaintenanceRoomMaxPlayers()
-
-Gets the maximum number of players in the maintenance room.
+### GetRoomPlayerDictionary()
 
 ```csharp
-public static int GetMaintenanceRoomMaxPlayers()
+public static IDictionary? GetRoomPlayerDictionary(object? room)
 ```
 
-### GetRoomMemberCount()
+## Assembly helpers
 
-Gets the number of members in a specified room.
+### GetGameAssembly()
 
 ```csharp
-public static int GetRoomMemberCount(object room)
+public static Assembly? GetGameAssembly()
 ```
 
-## Reflection Methods (Advanced)
+Returns the `Assembly-CSharp` assembly. Useful for finding types at runtime.
 
-### GetMaximumClientsField()
-
-Gets FieldInfo for the maximum clients field.
+### GetIVroomType() / GetGameSessionInfoType()
 
 ```csharp
-public static FieldInfo? GetMaximumClientsField()
+public static Type? GetIVroomType()
+public static Type? GetGameSessionInfoType()
 ```
 
-### GetAllServerSocketMethods()
-
-Gets all ServerSocket methods.
+## Full example — server status panel
 
 ```csharp
-public static IEnumerable<MethodBase> GetAllServerSocketMethods()
-```
-
-### GetVRoomManagerMethod()
-
-Gets a VRoomManager method by name.
-
-```csharp
-public static MethodInfo? GetVRoomManagerMethod(string methodName)
-```
-
-### GetRoomMethod()
-
-Gets a room method by type and name.
-
-```csharp
-public static MethodInfo? GetRoomMethod(string roomTypeName, string methodName)
-```
-
-## Practical Examples
-
-### Server Monitor
-
-```csharp
-class ServerMonitor
-{
-    private float updateInterval = 5f;
-    private float lastUpdate = 0f;
-
-    public void Update()
-    {
-        if (Time.time - lastUpdate < updateInterval) return;
-        lastUpdate = Time.time;
-
-        if (!ServerNetworkAPI.IsServerRunning())
-        {
-            MelonLogger.Msg("Server not running");
-            return;
-        }
-
-        int currentClients = ServerNetworkAPI.GetCurrentClientCount();
-        int maxClients = ServerNetworkAPI.GetMaximumClients();
-        int waitingRoomPlayers = ServerNetworkAPI.GetWaitingRoomMemberCount();
-        
-        MelonLogger.Msg("=== Server Status ===");
-        MelonLogger.Msg($"Clients: {currentClients}/{maxClients}");
-        MelonLogger.Msg($"In lobby: {waitingRoomPlayers}");
-    }
-}
-```
-
-### Automatic Server Slot Expansion
-
-```csharp
-void AutoExpandServerSlots()
+public override void OnGUI()
 {
     if (!ServerNetworkAPI.IsServerRunning()) return;
 
-    int current = ServerNetworkAPI.GetCurrentClientCount();
-    int max = ServerNetworkAPI.GetMaximumClients();
+    int sessions  = ServerNetworkAPI.GetSessionCount();
+    int inSession = ServerNetworkAPI.GetMaximumClients();
+    int waiting   = ServerNetworkAPI.GetWaitingRoomMemberCount();
 
-    // If more than 80% full
-    float fillPercentage = (float)current / max * 100f;
-    if (fillPercentage > 80f)
-    {
-        var serverSocket = ServerNetworkAPI.GetServerSocket();
-        if (serverSocket != null)
-        {
-            int newMax = max + 4;
-            ServerNetworkAPI.SetMaximumClients(serverSocket, newMax);
-            MelonLogger.Msg($"Slots expanded: {max} -> {newMax}");
-        }
-    }
-}
-```
-
-### Server Information Panel
-
-```csharp
-void OnGUI()
-{
-    if (!ServerNetworkAPI.IsServerRunning()) return;
-
-    GUILayout.BeginArea(new Rect(10, 10, 300, 200));
-    GUILayout.Label("=== Server Information ===");
-    
-    int current = ServerNetworkAPI.GetCurrentClientCount();
-    int max = ServerNetworkAPI.GetMaximumClients();
-    int waiting = ServerNetworkAPI.GetWaitingRoomMemberCount();
-    int waitingMax = ServerNetworkAPI.GetWaitingRoomMaxPlayers();
-    
-    GUILayout.Label($"Players: {current}/{max}");
-    GUILayout.Label($"In lobby: {waiting}/{waitingMax}");
-    
-    float fillPercentage = (float)current / max * 100f;
-    GUILayout.Label($"Fill: {fillPercentage:F1}%");
-    
+    GUILayout.BeginArea(new Rect(10, 10, 250, 100));
+    GUILayout.Label($"Sessions:  {sessions}");
+    GUILayout.Label($"In session: {inSession}");
+    GUILayout.Label($"In lobby:  {waiting}");
     GUILayout.EndArea();
 }
 ```
 
-## Notes
-
-:::warning Important
-- Many methods only work on the host/server
-- Changing the maximum client count can affect performance
-- Always check `IsServerRunning()` before using other methods
+:::warning
+Most methods return `0` or `null` on a client that is not hosting. Always check `IsServerRunning()` first.
 :::
 
-:::danger Security
-- Don't give clients access to methods that change server settings
-- Use access permission checks before changing critical parameters
-- Log all server setting changes
-:::
+## See also
 
-:::tip Tips
-- Use ServerNetworkAPI to create admin panels
-- Monitor server status regularly
-- Cache results for performance optimization
-:::
-
-## Use Cases
-
-ServerNetworkAPI is useful for:
-- Creating admin panels
-- Server status monitoring
-- Automatic slot management
-- Connection queue systems
-- Server statistics
-
-## See Also
-
-- [RoomAPI](./room.md) - Room management
-- [ManagerAPI](./manager.md) - Manager access
-- [ReflectionHelper](./reflection.md) - Reflection helper methods
+- [RoomAPI](./room.md) — room management
+- [CoreAPI](./core.md) — VWorld access

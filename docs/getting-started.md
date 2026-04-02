@@ -1,183 +1,89 @@
+---
+sidebar_position: 2
+---
+
 # Getting Started
 
 ## Requirements
 
-Before you begin, ensure you have:
+- Visual Studio 2022+ or JetBrains Rider
+- .NET SDK (netstandard2.1)
+- MelonLoader installed in your Mimesis game folder
 
-- **Visual Studio 2019+** or **JetBrains Rider**
-- **.NET SDK** (for .NET Standard 2.1)
-- **MelonLoader** installed in your Mimesis game folder
-- The game **Mimesis**
+## Add MimicAPI to your project
 
-## Installation
-
-MimicAPI is a modding library and is **not available via NuGet**. It's designed to be used directly in your mod projects.
-
-### Option 1: Download Pre-built DLL (Recommended)
-
-1. Download the latest release of `MimicAPI.dll` from [GitHub Releases](https://github.com/NeoMimicry/MimicAPI/releases)
-2. Add the DLL as a reference to your mod project
-
-#### Visual Studio
-
-1. Right-click on **References** → **Add Reference**
-2. Click **Browse** and select `MimicAPI.dll`
-3. Click **OK**
-
-#### Rider
-
-1. Right-click on project → **Add** → **Add Reference**
-2. Select **Add From** → **Browse**
-3. Select `MimicAPI.dll`
-
-### Option 2: Build from Source
-
-If you want to modify MimicAPI or build from source:
-
-1. Clone the repository:
-
-```bash
-git clone https://github.com/NeoMimicry/MimicAPI.git
-```
-
-2. Open `MimicAPI.sln` in Visual Studio or Rider
-
-3. Configure game assembly paths in `Directory.Build.props`:
-
-```xml
-<PropertyGroup>
-  <GameAssemblyPath>C:\Path\To\Mimesis\Mimesis_Data\Managed</GameAssemblyPath>
-  <BepInExAssemblyPath>C:\Path\To\Mimesis\MelonLoader\Managed</BepInExAssemblyPath>
-</PropertyGroup>
-```
-
-4. Build the project:
-
-```bash
-dotnet build
-```
-
-5. Add the built DLL to your mod project
-
-## Setting Up Your Mod Project
-
-### 1. Create a New Project
-
-```bash
-dotnet new classlib -n MyMimesisMod -f netstandard2.1
-```
-
-### 2. Add MimicAPI Reference
-
-Add the reference in your `.csproj` file:
+Download `MimicAPI.dll` from [GitHub Releases](https://github.com/NeoMimicry/MimicAPI/releases) and add it as a reference in your `.csproj`:
 
 ```xml
 <ItemGroup>
   <Reference Include="MimicAPI">
-    <HintPath>path\to\MimicAPI.dll</HintPath>
+    <HintPath>libs\MimicAPI.dll</HintPath>
   </Reference>
 </ItemGroup>
 ```
 
-### 3. Add Required References
-
-Your mod also needs references to:
-- MelonLoader.dll
-- Unity and game assemblies
-- FishNet.Runtime.dll (if using network features)
-
-### 4. Create Your Mod Class
-
-MimicAPI works with **MelonLoader**, so use MelonMod as your base class:
+## Create your mod
 
 ```csharp
 using MelonLoader;
 using MimicAPI.GameAPI;
-using UnityEngine;
 
-[assembly: MelonInfo(typeof(MyMimesisMod.MyMod), "My Mimesis Mod", "1.0.0", "YourName")]
-[assembly: MelonGame("Mimesis", "Mimesis")]
+[assembly: MelonInfo(typeof(MyMod.Mod), "My Mod", "1.0.0", "YourName")]
+[assembly: MelonGame("ReLUGames", "MIMESIS")]
 
-namespace MyMimesisMod
+namespace MyMod
 {
-    public class MyMod : MelonMod
+    public class Mod : MelonMod
     {
         public override void OnInitializeMelon()
         {
-            LoggerInstance.Msg("Mod loaded!");
-        }
-
-        public override void OnUpdate()
-        {
-            // Get local player
-            var player = PlayerAPI.GetLocalPlayer();
-            
-            if (player != null && Input.GetKeyDown(KeyCode.F1))
-            {
-                LoggerInstance.Msg($"Player position: {player.transform.position}");
-            }
+            MelonLogger.Msg("Mod loaded!");
         }
     }
 }
 ```
 
-## Verification
+## Wait for the game to be ready
 
-Create a simple test to verify MimicAPI is working:
+Most APIs return `null` until the game session is fully loaded. A safe pattern is to check `CoreAPI` before doing anything:
 
 ```csharp
-public override void OnInitializeMelon()
-{
-    // Test CoreAPI
-    var hub = CoreAPI.GetHub();
-    LoggerInstance.Msg($"Hub initialized: {hub != null}");
+bool IsReady() =>
+    CoreAPI.GetHub() != null &&
+    CoreAPI.GetVWorld() != null &&
+    CoreAPI.GetVRoomManager() != null;
 
-    // Note: Player and Room APIs may return null until game is fully loaded
-    LoggerInstance.Msg("MimicAPI is ready!");
+public override void OnUpdate()
+{
+    if (!IsReady()) return;
+
+    var room = RoomAPI.GetCurrentRoom();
+    if (room == null) return;
+
+    // safe to use APIs here
 }
 ```
 
-## Important Notes
+## Working with returned objects
 
-:::warning MelonLoader Only
-MimicAPI is designed specifically for **MelonLoader**. It does not support BepInEx or other mod loaders.
-:::
+Server-side types (`IVroom`, `VPlayer`, `VActor`) are returned as `object` because they can't be referenced directly from a mod. Use `ReflectionHelper` to read fields on them:
 
-:::info No NuGet Package
-MimicAPI is **not available on NuGet**. This is intentional as it's a modding library meant to be referenced directly in your mod projects.
-:::
+```csharp
+var room = RoomAPI.GetCurrentRoom();
+if (room == null) return;
 
-## Next Steps
+// RoomAPI wraps the common fields for you
+int day = RoomAPI.GetCurrentGameDay(room);
+int members = RoomAPI.GetMemberCount(room);
 
-- Learn about [CoreAPI](./api/core.md) for working with core game components
-- Learn about [PlayerAPI](./api/player.md) for working with players
+// For anything not wrapped, use ReflectionHelper directly
+long tick = ReflectionHelper.GetFieldValue<long>(room, "_currentTick");
+```
 
 ## Troubleshooting
 
-### MissingMethodException
+**Everything returns null** — the game isn't fully loaded yet. Add the `IsReady()` check above.
 
-If you get `MissingMethodException`:
-- Ensure your MimicAPI version matches your game version
-- Verify all dependencies are correctly referenced
+**MissingMethodException** — a game update changed an internal method name. Check the [ReflectionHelper](./api/reflection.md) page for how to find the new name using Fish AI Reader.
 
-### NullReferenceException
-
-If API methods return `null`:
-- Make sure the game is fully loaded
-- Check if you're in an active game session (for RoomAPI, PlayerAPI)
-- Always check for `null` before using objects:
-
-```csharp
-var player = PlayerAPI.GetLocalPlayer();
-if (player != null)
-{
-    // Safe to use player
-}
-```
-
-### Game Not Loading
-
-If the game crashes on startup:
-- Verify MelonLoader is correctly installed
-- Check MelonLoader console for errors
-- Ensure all DLL references are correct in your project
+**CS1503 / type mismatch** — don't try to cast returned `object` values to game types like `IVroom`. Keep them as `object` and pass them back into MimicAPI methods.
