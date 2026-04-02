@@ -1,244 +1,251 @@
+---
+sidebar_position: 4
+---
+
 # RoomAPI
 
-**RoomAPI** provides methods for working with game rooms: getting rooms, room information, players and actors in rooms.
+RoomAPI gives you access to the game's server-side rooms. Rooms are returned as `object` because `IVroom` is a game type that can't be referenced directly from a mod — just pass them back into RoomAPI methods and everything works.
 
-## Room Retrieval Methods
+## Room types
 
-### GetRoom()
+The game has five room types:
 
-Gets a room by ID.
+| `GetRoomName()` | `GetRoomType()` | Description |
+|-----------------|-----------------|-------------|
+| `VWaitingRoom` | `Waiting` | Lobby before a run |
+| `MaintenanceRoom` | `Maintenance` | Between-run maintenance phase |
+| `DeathMatchRoom` | `DeathMatch` | PvP arena |
+| *(game room)* | `Game` | Active dungeon run |
+| — | `Invalid` | Not assigned |
 
-```csharp
-public static IVroom? GetRoom(long roomID)
-```
+## Getting rooms
 
 ### GetCurrentRoom()
 
-Gets the current active player room.
-
 ```csharp
-public static IVroom? GetCurrentRoom()
+public static object? GetCurrentRoom()
 ```
 
-**Example:**
+Returns the first playable room. This is the room the local player is actively in.
+
 ```csharp
 var room = RoomAPI.GetCurrentRoom();
-if (room != null)
-{
-    MelonLogger.Msg($"Current room: {RoomAPI.GetRoomName(room)}");
-}
+if (room == null) return;
+
+MelonLogger.Msg($"In {RoomAPI.GetRoomName(room)}, day {RoomAPI.GetCurrentGameDay(room)}");
 ```
 
 ### GetAllRooms()
 
-Gets all existing rooms.
-
 ```csharp
-public static IVroom[] GetAllRooms()
+public static object[] GetAllRooms()
 ```
+
+All rooms currently tracked by `VRoomManager`.
 
 ### GetAllPlayableRooms()
 
-Gets all active (playable) rooms.
-
 ```csharp
-public static List<IVroom> GetAllPlayableRooms()
+public static List<object> GetAllPlayableRooms()
 ```
 
-### GetAllRoomsOfType\<T\>()
+Filtered to rooms where `IsPlayable()` returns true.
 
-Gets all rooms of a specific type.
-
-```csharp
-public static IVroom[] GetAllRoomsOfType<T>() where T : IVroom
-```
-
-## Information Methods
-
-### GetRoomID()
-
-Gets the room ID.
+### GetRoom()
 
 ```csharp
-public static long GetRoomID(IVroom? room)
+public static object? GetRoom(long roomID)
 ```
 
-### GetRoomMasterID()
-
-Gets the room master (host) ID.
-
-```csharp
-public static int GetRoomMasterID(IVroom? room)
-```
-
-### GetRoomName()
-
-Gets the room name (type).
-
-```csharp
-public static string GetRoomName(IVroom? room)
-```
-
-### IsRoomPlayable()
-
-Checks if a room is playable (active).
-
-```csharp
-public static bool IsRoomPlayable(IVroom? room)
-```
-
-### RoomExists()
-
-Checks room existence by ID.
-
-```csharp
-public static bool RoomExists(long roomID)
-```
-
-## Game Progress Methods
-
-### GetCurrentGameDay()
-
-Gets the current game day in the room.
-
-```csharp
-public static int GetCurrentGameDay(IVroom? room)
-```
-
-### GetCurrentSessionCycle()
-
-Gets the current session cycle.
-
-```csharp
-public static int GetCurrentSessionCycle(IVroom? room)
-```
-
-## Players and Actors Methods
-
-### GetRoomPlayers()
-
-Gets all players (VPlayer) in the room.
-
-```csharp
-public static List<VPlayer> GetRoomPlayers(IVroom? room)
-```
-
-### GetRoomActors()
-
-Gets all actors (VActor) in the room.
-
-```csharp
-public static List<VActor> GetRoomActors(IVroom? room)
-```
-
-## Level Objects Methods
-
-### GetRoomLevelObjects()
-
-Gets all level objects in the room.
-
-```csharp
-public static Dictionary<int, ILevelObjectInfo>? GetRoomLevelObjects(IVroom? room)
-```
-
-## Room Settings Methods
-
-### GetRoomMaxPlayers()
-
-Gets the maximum number of players in the room.
-
-```csharp
-public static int GetRoomMaxPlayers(IVroom? room)
-public static int GetRoomMaxPlayers(object? room)
-```
-
-### SetRoomMaxPlayers()
-
-Sets the maximum number of players in the room.
-
-```csharp
-public static void SetRoomMaxPlayers(IVroom? room, int maxPlayers)
-public static void SetRoomMaxPlayers(object? room, int maxPlayers)
-```
-
-:::warning Caution
-Changing the maximum number of players can affect game balance and server logic. Use with caution.
-:::
-
-## ID List Methods
+Look up a specific room by its ID.
 
 ### GetAllRoomIDs()
-
-Gets the list of IDs of all existing rooms.
 
 ```csharp
 public static List<long> GetAllRoomIDs()
 ```
 
-## Practical Examples
-
-### Display Full Room Information
+### RoomExists()
 
 ```csharp
-void DisplayCurrentRoomInfo()
-{
-    var room = RoomAPI.GetCurrentRoom();
-    if (room == null)
-    {
-        MelonLogger.Warning("Not in a room");
-        return;
-    }
-
-    MelonLogger.Msg("=== Room Information ===");
-    MelonLogger.Msg($"Type: {RoomAPI.GetRoomName(room)}");
-    MelonLogger.Msg($"ID: {RoomAPI.GetRoomID(room)}");
-    MelonLogger.Msg($"Master: {RoomAPI.GetRoomMasterID(room)}");
-    MelonLogger.Msg($"Players: {RoomAPI.GetRoomPlayers(room).Count} / {RoomAPI.GetRoomMaxPlayers(room)}");
-    MelonLogger.Msg($"Actors: {RoomAPI.GetRoomActors(room).Count}");
-    MelonLogger.Msg($"Game day: {RoomAPI.GetCurrentGameDay(room)}");
-    MelonLogger.Msg($"Session cycle: {RoomAPI.GetCurrentSessionCycle(room)}");
-    MelonLogger.Msg($"Playable: {RoomAPI.IsRoomPlayable(room)}");
-}
+public static bool RoomExists(long roomID)
 ```
 
-### Monitor All Active Rooms
+## Room identity
+
+### GetRoomID()
 
 ```csharp
-void MonitorAllRooms()
+public static long GetRoomID(object? room)
+```
+
+### GetRoomMasterID()
+
+```csharp
+public static int GetRoomMasterID(object? room)
+```
+
+### GetRoomName()
+
+```csharp
+public static string GetRoomName(object? room)
+```
+
+Returns the runtime class name: `VWaitingRoom`, `MaintenanceRoom`, `DeathMatchRoom`, etc.
+
+### GetRoomType()
+
+```csharp
+public static object? GetRoomType(object? room)
+```
+
+Returns the `VRoomType` enum value as `object`. Compare with `.ToString()`:
+
+```csharp
+string type = RoomAPI.GetRoomType(room)?.ToString();
+if (type == "Waiting")
+    MelonLogger.Msg("We are in the lobby");
+```
+
+### GetRoomProperty()
+
+```csharp
+public static object? GetRoomProperty(object? room)
+```
+
+Returns the `IVRoomProperty` object. Use `ReflectionHelper` to read `SessionID`, `vRoomType`, or `TargetCurrency` from it.
+
+## Room state
+
+### IsRoomPlayable()
+
+```csharp
+public static bool IsRoomPlayable(object? room)
+```
+
+### GetCurrentGameDay()
+
+```csharp
+public static int GetCurrentGameDay(object? room)
+```
+
+### GetCurrentSessionCycle()
+
+```csharp
+public static int GetCurrentSessionCycle(object? room)
+```
+
+### GetCurrentTick()
+
+```csharp
+public static long GetCurrentTick(object? room)
+```
+
+### GetMemberCount()
+
+```csharp
+public static int GetMemberCount(object? room)
+```
+
+### GetDeadPlayerCount()
+
+```csharp
+public static int GetDeadPlayerCount(object? room)
+```
+
+### IsAllPlayerDead()
+
+```csharp
+public static bool IsAllPlayerDead(object? room)
+```
+
+### IsAllPlayerWastedOrDead()
+
+```csharp
+public static bool IsAllPlayerWastedOrDead(object? room)
+```
+
+## Players and actors
+
+### GetRoomPlayers()
+
+```csharp
+public static List<object> GetRoomPlayers(object? room)
+```
+
+Server-side `VPlayer` objects from `_vPlayerDict`. Use `ReflectionHelper` to read fields on them, or pass them to ActorAPI.
+
+### GetRoomActors()
+
+```csharp
+public static List<object> GetRoomActors(object? room)
+```
+
+All actors from `_vActorDict` — players, monsters, loot objects, etc.
+
+### GetRoomLevelObjects()
+
+```csharp
+public static IDictionary? GetRoomLevelObjects(object? room)
+```
+
+## Currency
+
+### GetRoomCurrency()
+
+```csharp
+public static int GetRoomCurrency(object? room)
+```
+
+### GetContaRecoveryRate()
+
+```csharp
+public static long GetContaRecoveryRate(object? room)
+```
+
+## Network helpers
+
+### GetRoomPlayerCount()
+
+```csharp
+public static int GetRoomPlayerCount(object? room)
+```
+
+### GetRoomPlayerDictionary()
+
+```csharp
+public static IDictionary? GetRoomPlayerDictionary(object? room)
+```
+
+## Full example
+
+```csharp
+public override void OnUpdate()
 {
+    if (!Input.GetKeyDown(KeyCode.F2)) return;
+
     var rooms = RoomAPI.GetAllRooms();
-    MelonLogger.Msg($"=== Room Monitoring ({rooms.Length}) ===");
+    MelonLogger.Msg($"--- {rooms.Length} rooms ---");
 
     foreach (var room in rooms)
     {
-        string name = RoomAPI.GetRoomName(room);
-        long id = RoomAPI.GetRoomID(room);
-        int players = RoomAPI.GetRoomPlayers(room).Count;
-        int maxPlayers = RoomAPI.GetRoomMaxPlayers(room);
-        bool playable = RoomAPI.IsRoomPlayable(room);
+        string name    = RoomAPI.GetRoomName(room);
+        string type    = RoomAPI.GetRoomType(room)?.ToString() ?? "?";
+        long id        = RoomAPI.GetRoomID(room);
+        int members    = RoomAPI.GetMemberCount(room);
+        int day        = RoomAPI.GetCurrentGameDay(room);
+        bool playable  = RoomAPI.IsRoomPlayable(room);
 
-        string status = playable ? "ACTIVE" : "INACTIVE";
-        MelonLogger.Msg($"[{status}] {name} (ID: {id}) - {players}/{maxPlayers} players");
+        MelonLogger.Msg($"[{type}] {name} id={id} members={members} day={day} playable={playable}");
     }
 }
 ```
 
-## Notes
-
-:::warning Important
-- `GetCurrentRoom()` returns `null` if the player is not in an active room
-- Always check return values for `null`
-- `SetRoomMaxPlayers()` is a powerful method, use cautiously
+:::warning
+All methods return safe defaults (`null`, `0`, empty collections) when passed `null`. Always null-check `GetCurrentRoom()` before use.
 :::
 
-:::tip Tips
-- Use `IsRoomPlayable()` to filter active rooms
-- Cache `GetCurrentRoom()` if using frequently in one method
-- For working with players in rooms, also use ActorAPI
-:::
+## See also
 
-## See Also
-
-- [ActorAPI](./actor.md) - Working with actors and players in rooms
-- [PlayerAPI](./player.md) - Working with local players
-- [ServerNetworkAPI](./server-network.md) - Server network functions
+- [ActorAPI](./actor.md) — monsters, players, and loot inside a room
+- [ServerNetworkAPI](./server-network.md) — session and connection info

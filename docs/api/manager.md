@@ -1,245 +1,176 @@
+---
+sidebar_position: 2
+---
+
 # ManagerAPI
 
-**ManagerAPI** provides convenient access to various game managers through a unified interface.
+ManagerAPI gives you access to all the game managers stored on `Hub`. Because they are C# auto-properties, their backing fields follow the `<name>k__BackingField` pattern — ManagerAPI handles that for you.
 
-## Universal Method
-
-### GetManager\<T\>()
-
-Universal method for getting any manager by field name.
-
-```csharp
-public static T? GetManager<T>(string fieldName) where T : class
-```
-
-**Parameters:**
-- `fieldName` - Field name of the manager in the Hub class
-- `T` - Manager type
-
-**Example:**
-```csharp
-var customManager = ManagerAPI.GetManager<CustomManager>("custommgr");
-```
-
-## Specific Manager Methods
+## Methods
 
 ### GetDataManager()
-
-Gets the game data manager.
 
 ```csharp
 public static DataManager? GetDataManager()
 ```
 
-**Usage:** DataManager manages game data, configurations, and resources.
+Manages game data, tables, and configuration.
+
+---
 
 ### GetTimeUtil()
-
-Gets the time utility.
 
 ```csharp
 public static TimeUtil? GetTimeUtil()
 ```
 
-### GetNavManager()
+Time utilities used by the game loop.
 
-Gets the navigation manager.
+---
+
+### GetNavManager()
 
 ```csharp
 public static NavManager? GetNavManager()
 ```
 
-**Usage:** NavManager handles AI navigation and pathfinding.
+AI navigation and pathfinding.
+
+---
 
 ### GetDynamicDataManager()
-
-Gets the dynamic data manager.
 
 ```csharp
 public static DynamicDataManager? GetDynamicDataManager()
 ```
 
-### GetUIManager()
+Dynamic session data that changes at runtime.
 
-Gets the user interface manager.
+---
+
+### GetUIManager()
 
 ```csharp
 public static UIManager? GetUIManager()
 ```
 
-**Usage:** UIManager controls all UI elements, windows, and HUD.
+All UI elements, windows, and HUD.
+
+---
 
 ### GetCameraManager()
-
-Gets the camera manager.
 
 ```csharp
 public static CameraManager? GetCameraManager()
 ```
 
-### GetAudioManager()
+---
 
-Gets the audio manager.
+### GetAudioManager()
 
 ```csharp
 public static AudioManager? GetAudioManager()
 ```
 
-**Usage:** AudioManager handles sound effects, music, and audio environment.
+Sound effects, music, and audio environment.
+
+---
 
 ### GetInputManager()
-
-Gets the input manager.
 
 ```csharp
 public static InputManager? GetInputManager()
 ```
 
-### GetNetworkManager()
+---
 
-Gets the network manager (V2).
+### GetNetworkManager()
 
 ```csharp
 public static NetworkManagerV2? GetNetworkManager()
 ```
 
-**Usage:** NetworkManagerV2 manages network connections and synchronization.
+Network connections and synchronization.
+
+---
 
 ### GetAPIHandler()
-
-Gets the API request handler.
 
 ```csharp
 public static APIRequestHandler? GetAPIHandler()
 ```
 
-## Availability Check Method
+---
+
+### GetLocalisationManager()
+
+```csharp
+public static L10NManager? GetLocalisationManager()
+```
+
+---
+
+### GetManager\<T\>()
+
+Generic fallback for any manager not listed above.
+
+```csharp
+public static T? GetManager<T>(string fieldName) where T : class
+```
+
+Pass the exact Hub field name. For auto-properties use `<name>k__BackingField`, for plain fields use the name directly.
+
+```csharp
+var custom = ManagerAPI.GetManager<MyManager>("<mymanager>k__BackingField");
+```
+
+---
 
 ### IsManagerAvailable\<T\>()
-
-Checks if a manager is available.
 
 ```csharp
 public static bool IsManagerAvailable<T>(string fieldName) where T : class
 ```
 
-**Example:**
-```csharp
-if (ManagerAPI.IsManagerAvailable<UIManager>("uiman"))
-{
-    var uiManager = ManagerAPI.GetUIManager();
-    // Safe to use UIManager
-}
-```
+Quick null-check without fetching the object.
 
-## Practical Examples
+## Hub field reference
 
-### Check All Managers Availability
+| Method | Hub field |
+|--------|-----------|
+| `GetDataManager()` | `<dataman>k__BackingField` |
+| `GetTimeUtil()` | `<timeutil>k__BackingField` |
+| `GetNavManager()` | `<navman>k__BackingField` |
+| `GetDynamicDataManager()` | `<dynamicDataMan>k__BackingField` |
+| `GetUIManager()` | `<uiman>k__BackingField` |
+| `GetCameraManager()` | `<cameraman>k__BackingField` |
+| `GetAudioManager()` | `<audioman>k__BackingField` |
+| `GetInputManager()` | `<inputman>k__BackingField` |
+| `GetNetworkManager()` | `<netman2>k__BackingField` |
+| `GetAPIHandler()` | `<apihandler>k__BackingField` |
+| `GetLocalisationManager()` | `lcman` *(plain field)* |
 
-```csharp
-void CheckAllManagers()
-{
-    MelonLogger.Msg("=== Manager Check ===");
-    
-    MelonLogger.Msg($"DataManager: {ManagerAPI.GetDataManager() != null}");
-    MelonLogger.Msg($"TimeUtil: {ManagerAPI.GetTimeUtil() != null}");
-    MelonLogger.Msg($"NavManager: {ManagerAPI.GetNavManager() != null}");
-    MelonLogger.Msg($"DynamicDataManager: {ManagerAPI.GetDynamicDataManager() != null}");
-    MelonLogger.Msg($"UIManager: {ManagerAPI.GetUIManager() != null}");
-    MelonLogger.Msg($"CameraManager: {ManagerAPI.GetCameraManager() != null}");
-    MelonLogger.Msg($"AudioManager: {ManagerAPI.GetAudioManager() != null}");
-    MelonLogger.Msg($"InputManager: {ManagerAPI.GetInputManager() != null}");
-    MelonLogger.Msg($"NetworkManager: {ManagerAPI.GetNetworkManager() != null}");
-    MelonLogger.Msg($"APIHandler: {ManagerAPI.GetAPIHandler() != null}");
-}
-```
-
-### Safe Manager Usage
+## Example
 
 ```csharp
-void SafeManagerUsage()
-{
-    // Always check for null
-    var uiManager = ManagerAPI.GetUIManager();
-    if (uiManager == null)
-    {
-        MelonLogger.Warning("UIManager not available");
-        return;
-    }
+var data = ManagerAPI.GetDataManager();
+var ui   = ManagerAPI.GetUIManager();
+var nav  = ManagerAPI.GetNavManager();
 
-    // Now safe to use
-    // uiManager.ShowMessage("Hello!");
+if (data == null || ui == null)
+{
+    MelonLogger.Warning("Managers not ready yet");
+    return;
 }
+
+MelonLogger.Msg("All required managers available");
 ```
 
-### Initialize Modular System
-
-```csharp
-class ModSystem
-{
-    private DataManager? dataManager;
-    private UIManager? uiManager;
-    private AudioManager? audioManager;
-    private NetworkManagerV2? networkManager;
-
-    public bool Initialize()
-    {
-        MelonLogger.Msg("Initializing modular system...");
-
-        dataManager = ManagerAPI.GetDataManager();
-        uiManager = ManagerAPI.GetUIManager();
-        audioManager = ManagerAPI.GetAudioManager();
-        networkManager = ManagerAPI.GetNetworkManager();
-
-        bool success = dataManager != null && 
-                      uiManager != null && 
-                      audioManager != null &&
-                      networkManager != null;
-
-        if (success)
-        {
-            MelonLogger.Msg("All managers loaded successfully!");
-        }
-        else
-        {
-            MelonLogger.Error("Failed to load some managers!");
-        }
-
-        return success;
-    }
-}
-```
-
-## Manager Table
-
-| Manager | Purpose | Getter Method |
-|---------|---------|--------------|
-| DataManager | Data and configuration management | `GetDataManager()` |
-| TimeUtil | Time utilities | `GetTimeUtil()` |
-| NavManager | Navigation and pathfinding | `GetNavManager()` |
-| DynamicDataManager | Dynamic session data | `GetDynamicDataManager()` |
-| UIManager | Interface management | `GetUIManager()` |
-| CameraManager | Camera control | `GetCameraManager()` |
-| AudioManager | Sound management | `GetAudioManager()` |
-| InputManager | Input control | `GetInputManager()` |
-| NetworkManagerV2 | Network functions | `GetNetworkManager()` |
-| APIRequestHandler | API request handling | `GetAPIHandler()` |
-
-## Notes
-
-:::warning Important
-- All methods return `null` if the manager is not initialized
-- Managers may be unavailable during early game loading stages
-- Always check return values for `null`
+:::warning
+All methods return `null` if the manager is not initialized yet. Always null-check before use.
 :::
 
-:::tip Tips
-- Cache frequently used managers
-- Use `IsManagerAvailable<T>()` for preliminary checks
-- Initialize your systems after verifying required managers are available
-:::
+## See also
 
-## See Also
-
-- [CoreAPI](./core.md) - Core game components
-- [ReflectionHelper](./reflection.md) - Reflection helper methods
+- [CoreAPI](./core.md)
+- [ReflectionHelper](./reflection.md)

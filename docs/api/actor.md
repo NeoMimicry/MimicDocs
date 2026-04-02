@@ -1,213 +1,178 @@
+---
+sidebar_position: 5
+---
+
 # ActorAPI
 
-**ActorAPI** provides methods for working with actors in game rooms: players (VPlayer), monsters (VMonster), and loot objects (VLootingObject).
+ActorAPI works with server-side actors inside a room — players (`VPlayer`), monsters (`VMonster`), and loot objects (`VLootingObject`). All actors are returned as `object` since these types can't be referenced directly from a mod.
 
-## VPlayer Methods
+:::info ProtoActor vs VPlayer
+`ProtoActor` (PlayerAPI) is the client-side Unity object you move around. `VPlayer` (ActorAPI) is the server-side representation inside a room. They represent the same player but are different objects used for different purposes.
+:::
 
-### GetVPlayerInRoom()
-
-Gets a VPlayer by Actor ID in a specified room.
-
-```csharp
-public static VPlayer? GetVPlayerInRoom(IVroom? room, int actorID)
-```
+## Players
 
 ### GetAllVPlayersInRoom()
 
-Gets all VPlayers in a room.
+```csharp
+public static List<object> GetAllVPlayersInRoom(object? room)
+```
+
+All server-side players in the room.
 
 ```csharp
-public static List<VPlayer> GetAllVPlayersInRoom(IVroom? room)
+var room = RoomAPI.GetCurrentRoom();
+var players = ActorAPI.GetAllVPlayersInRoom(room);
+MelonLogger.Msg($"{players.Count} players in room");
 ```
+
+### GetVPlayerInRoom()
+
+```csharp
+public static object? GetVPlayerInRoom(object? room, int actorID)
+```
+
+Find a specific player by their `ObjectID`.
 
 ### GetAlivePlayersInRoom()
 
-Gets all alive players in a room.
-
 ```csharp
-public static List<VPlayer> GetAlivePlayersInRoom(IVroom? room)
+public static List<object> GetAlivePlayersInRoom(object? room)
 ```
 
 ### GetDeadPlayersInRoom()
 
-Gets all dead players in a room.
-
 ```csharp
-public static List<VPlayer> GetDeadPlayersInRoom(IVroom? room)
-```
-
-## VActor Methods
-
-### GetAllVActorsInRoom()
-
-Gets all actors in a room.
-
-```csharp
-public static List<VActor> GetAllVActorsInRoom(IVroom? room)
-```
-
-### GetVActorInRoom()
-
-Gets an actor by ID in a room.
-
-```csharp
-public static VActor? GetVActorInRoom(IVroom? room, int actorID)
-```
-
-## Monster Methods
-
-### GetMonstersInRoom()
-
-Gets all monsters in a room.
-
-```csharp
-public static List<VActor> GetMonstersInRoom(IVroom? room)
-```
-
-### GetAliveMonstersInRoom()
-
-Gets all alive monsters in a room.
-
-```csharp
-public static List<VActor> GetAliveMonstersInRoom(IVroom? room)
-```
-
-### GetDeadMonstersInRoom()
-
-Gets all dead monsters in a room.
-
-```csharp
-public static List<VActor> GetDeadMonstersInRoom(IVroom? room)
-```
-
-## Loot Object Methods
-
-### GetLootingObjectsInRoom()
-
-Gets all loot objects in a room.
-
-```csharp
-public static List<VActor> GetLootingObjectsInRoom(IVroom? room)
-```
-
-## Generic Methods
-
-### GetActorsByType\<T\>()
-
-Gets all actors of a specific type in a room.
-
-```csharp
-public static List<VActor> GetActorsByType<T>(IVroom? room) where T : VActor
-```
-
-**Example:**
-```csharp
-var room = RoomAPI.GetCurrentRoom();
-
-// Get all VMonster
-var monsters = ActorAPI.GetActorsByType<VMonster>(room);
-
-// Get all VLootingObject
-var lootObjects = ActorAPI.GetActorsByType<VLootingObject>(room);
-```
-
-## Check Methods
-
-### HasAliveMonstersInRoom()
-
-Checks if there are alive monsters in a room.
-
-```csharp
-public static bool HasAliveMonstersInRoom(IVroom? room)
+public static List<object> GetDeadPlayersInRoom(object? room)
 ```
 
 ### HasAlivePlayersInRoom()
 
-Checks if there are alive players in a room.
-
 ```csharp
-public static bool HasAlivePlayersInRoom(IVroom? room)
+public static bool HasAlivePlayersInRoom(object? room)
 ```
 
-## Practical Examples
+## Actors
 
-### Display Room Statistics
+### GetAllVActorsInRoom()
 
 ```csharp
-void DisplayRoomStats()
+public static List<object> GetAllVActorsInRoom(object? room)
+```
+
+Every actor in the room — players, monsters, loot objects, projectiles, etc.
+
+### GetVActorInRoom()
+
+```csharp
+public static object? GetVActorInRoom(object? room, int actorID)
+```
+
+## Monsters
+
+### GetMonstersInRoom()
+
+```csharp
+public static List<object> GetMonstersInRoom(object? room)
+```
+
+Actors whose runtime type name is `VMonster`.
+
+### GetAliveMonstersInRoom()
+
+```csharp
+public static List<object> GetAliveMonstersInRoom(object? room)
+```
+
+### GetDeadMonstersInRoom()
+
+```csharp
+public static List<object> GetDeadMonstersInRoom(object? room)
+```
+
+### HasAliveMonstersInRoom()
+
+```csharp
+public static bool HasAliveMonstersInRoom(object? room)
+```
+
+```csharp
+var room = RoomAPI.GetCurrentRoom();
+if (ActorAPI.HasAliveMonstersInRoom(room))
+    MelonLogger.Msg("Monsters are still alive");
+else
+    MelonLogger.Msg("Room cleared");
+```
+
+## Loot objects
+
+### GetLootingObjectsInRoom()
+
+```csharp
+public static List<object> GetLootingObjectsInRoom(object? room)
+```
+
+Actors whose runtime type name is `VLootingObject`.
+
+## Custom type filter
+
+### GetActorsByTypeName()
+
+```csharp
+public static List<object> GetActorsByTypeName(object? room, string typeName)
+```
+
+Filter by any runtime type name. Useful for types not covered by the named methods.
+
+```csharp
+var room = RoomAPI.GetCurrentRoom();
+var projectiles = ActorAPI.GetActorsByTypeName(room, "VProjectileObject");
+var fieldSkills = ActorAPI.GetActorsByTypeName(room, "FieldSkillObject");
+```
+
+## Reading actor data
+
+Actors are `object`, so use `ReflectionHelper` to access their fields:
+
+```csharp
+var room = RoomAPI.GetCurrentRoom();
+var actors = ActorAPI.GetAllVActorsInRoom(room);
+
+foreach (var actor in actors)
 {
-    var room = RoomAPI.GetCurrentRoom();
-    if (room == null)
-    {
-        MelonLogger.Warning("Room not found");
-        return;
-    }
+    int id   = ReflectionHelper.GetFieldValue<int>(actor, "ObjectID");
+    bool alive = ReflectionHelper.InvokeMethod(actor, "IsAliveStatus") is bool b && b;
 
-    var allPlayers = ActorAPI.GetAllVPlayersInRoom(room);
-    var alivePlayers = ActorAPI.GetAlivePlayersInRoom(room);
-    var deadPlayers = ActorAPI.GetDeadPlayersInRoom(room);
-    
-    var allMonsters = ActorAPI.GetMonstersInRoom(room);
-    var aliveMonsters = ActorAPI.GetAliveMonstersInRoom(room);
-    var deadMonsters = ActorAPI.GetDeadMonstersInRoom(room);
-    
-    var lootObjects = ActorAPI.GetLootingObjectsInRoom(room);
-
-    MelonLogger.Msg("=== Room Statistics ===");
-    MelonLogger.Msg($"Players: {alivePlayers.Count} alive / {deadPlayers.Count} dead / {allPlayers.Count} total");
-    MelonLogger.Msg($"Monsters: {aliveMonsters.Count} alive / {deadMonsters.Count} dead / {allMonsters.Count} total");
-    MelonLogger.Msg($"Loot objects: {lootObjects.Count}");
+    MelonLogger.Msg($"{actor.GetType().Name} #{id} — {(alive ? "alive" : "dead")}");
 }
 ```
 
-### Check Wave Completion
+## Full example — room status
 
 ```csharp
-bool IsWaveCompleted()
-{
-    var room = RoomAPI.GetCurrentRoom();
-    if (room == null) return false;
-
-    bool hasAliveMonsters = ActorAPI.HasAliveMonstersInRoom(room);
-    bool hasAlivePlayers = ActorAPI.HasAlivePlayersInRoom(room);
-
-    // Wave completed if no alive monsters and there are alive players
-    return !hasAliveMonsters && hasAlivePlayers;
-}
-
 public override void OnUpdate()
 {
-    if (IsWaveCompleted())
-    {
-        MelonLogger.Msg("Wave completed! All monsters eliminated!");
-    }
+    if (!Input.GetKeyDown(KeyCode.F3)) return;
+
+    var room = RoomAPI.GetCurrentRoom();
+    if (room == null) return;
+
+    var alivePlayers  = ActorAPI.GetAlivePlayersInRoom(room);
+    var deadPlayers   = ActorAPI.GetDeadPlayersInRoom(room);
+    var aliveMonsters = ActorAPI.GetAliveMonstersInRoom(room);
+    var loot          = ActorAPI.GetLootingObjectsInRoom(room);
+
+    MelonLogger.Msg($"Players:  {alivePlayers.Count} alive / {deadPlayers.Count} dead");
+    MelonLogger.Msg($"Monsters: {aliveMonsters.Count} alive");
+    MelonLogger.Msg($"Loot objects: {loot.Count}");
+
+    if (ActorAPI.IsAllPlayerDead(room) ?? RoomAPI.IsAllPlayerDead(room))
+        MelonLogger.Msg("All players are dead — run over");
 }
 ```
 
-## Notes
+## See also
 
-:::warning Important
-- ActorAPI works with server-side actor representations (VPlayer, VActor)
-- Don't confuse with ProtoActor from PlayerAPI - these are different types
-- Always check `room` for `null` before using
-:::
-
-:::tip Tip
-- Use ActorAPI for server logic and statistics
-- For working with local players, use PlayerAPI
-- Cache results if calling methods frequently
-:::
-
-## Differences: VPlayer vs ProtoActor
-
-| Aspect | VPlayer (ActorAPI) | ProtoActor (PlayerAPI) |
-|--------|-------------------|----------------------|
-| Scope | Server room logic | Client game objects |
-| Component Access | Limited | Full (Transform, Unity components) |
-| Use Case | Statistics, room logic | Player control, position, inventory |
-
-## See Also
-
-- [PlayerAPI](./player.md) - Working with local players (ProtoActor)
-- [RoomAPI](./room.md) - Room management
-- [LootAPI](./loot.md) - Working with loot
+- [RoomAPI](./room.md) — getting the room to pass in
+- [PlayerAPI](./player.md) — client-side player control
+- [ReflectionHelper](./reflection.md) — reading fields on returned objects
